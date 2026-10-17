@@ -21,6 +21,7 @@ def:pub MaintenanceDashboard() -> JsxElement {
     has submitting: bool = False;
     has updating_ticket: int = 0;
     has debug_message: str = "Waiting for button click";
+    has debug_counter: int = 0;
     def handle_location(e: ChangeEvent) { location = e.target.value; }
     def handle_description(e: ChangeEvent) { description = e.target.value; }
 
@@ -31,6 +32,7 @@ def:pub MaintenanceDashboard() -> JsxElement {
     }
 
     def handle_test_click(e: MouseEvent) {
+        debug_counter = debug_counter + 1;
         debug_message = "TEST BUTTON WORKS";
     }
 
@@ -119,7 +121,7 @@ def:pub MaintenanceDashboard() -> JsxElement {
             </section>
 
             <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
-                <Card className="shadow-sm lg:col-span-2"><CardHeader><CardTitle>{"Report a Problem"}</CardTitle><CardDescription>{"Let the campus team know what needs attention."}</CardDescription></CardHeader><CardContent><form className="flex flex-col gap-5"><FieldGroup><Field><FieldLabel htmlFor="location">{"Location"}</FieldLabel><Input id="location" value={location} onChange={handle_location} placeholder="e.g. Science Building, room 204" className="h-10" /></Field><Field><FieldLabel htmlFor="description">{"Issue Description"}</FieldLabel><Textarea id="description" value={description} onChange={handle_description} placeholder="Describe the maintenance issue" className="min-h-28 resize-y" /></Field></FieldGroup><button type="button" disabled={submitting} onClick={handle_submit_click} className="h-10 w-full rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm disabled:pointer-events-none disabled:opacity-50">{"Submit Report" if not submitting else "Submitting report…"}</button><p className="text-xs text-muted-foreground" role="status">{debug_message}</p><button type="button" onClick={handle_test_click} className="w-fit rounded-lg border border-border bg-background px-3 py-1.5 text-sm">{"TEST CLICK"}</button></form></CardContent></Card>
+                <Card className="shadow-sm lg:col-span-2"><CardHeader><CardTitle>{"Report a Problem"}</CardTitle><CardDescription>{"Let the campus team know what needs attention."}</CardDescription></CardHeader><CardContent><form className="flex flex-col gap-5"><FieldGroup><Field><FieldLabel htmlFor="location">{"Location"}</FieldLabel><Input id="location" value={location} onChange={handle_location} placeholder="e.g. Science Building, room 204" className="h-10" /></Field><Field><FieldLabel htmlFor="description">{"Issue Description"}</FieldLabel><Textarea id="description" value={description} onChange={handle_description} placeholder="Describe the maintenance issue" className="min-h-28 resize-y" /></Field></FieldGroup><button type="button" disabled={submitting} onClick={handle_submit_click} className="h-10 w-full rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm disabled:pointer-events-none disabled:opacity-50">{"Submit Report" if not submitting else "Submitting report…"}</button><p className="text-xs text-muted-foreground" role="status">{debug_message + " · Click count: " + str(debug_counter)}</p><button type="button" onClick={handle_test_click} className="w-fit rounded-lg border border-border bg-background px-3 py-1.5 text-sm">{"TEST CLICK"}</button></form></CardContent></Card>
 
                 <Card className="shadow-sm lg:col-span-3"><CardHeader><CardTitle>{"Recent Maintenance Tickets"}</CardTitle><CardDescription>{"The latest reports from around campus."}</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">
                     {if loading { <p className="py-8 text-center text-sm text-muted-foreground">{"Loading maintenance tickets…"}</p> }}
