@@ -1,3 +1,4 @@
+import from services.maintenanceService { Ticket, TimeSlot, ScheduledFor, initialize_samples, list_tickets, list_slots, get_ticket_summary }
 import ".styles.global.css";
 import from "@jac/runtime" { Router, Routes, Route }
 import from .components.MaintenanceDashboard { MaintenanceDashboard }
