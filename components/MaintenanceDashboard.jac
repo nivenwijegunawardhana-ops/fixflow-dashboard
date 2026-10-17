@@ -20,6 +20,7 @@ def:pub MaintenanceDashboard() -> JsxElement {
     has action_error: str = "";
     has submitting: bool = False;
     has updating_ticket: int = 0;
+    has debug_message: str = "Waiting for button click";
     def handle_location(e: ChangeEvent) { location = e.target.value; }
     def handle_description(e: ChangeEvent) { description = e.target.value; }
 
@@ -29,12 +30,17 @@ def:pub MaintenanceDashboard() -> JsxElement {
         summary = await get_ticket_summary();
     }
 
-    async def handle_submit_click(e: FormEvent) {
-        e.preventDefault();
-        await handle_submit();
+    def handle_test_click(e: MouseEvent) {
+        debug_message = "TEST BUTTON WORKS";
+    }
+
+    def handle_submit_click(e: MouseEvent) {
+        debug_message = "SUBMIT BUTTON CLICKED";
+        handle_submit();
     }
 
     async def handle_submit() {
+        debug_message = "SUBMISSION HANDLER STARTED";
         location_value = location.strip();
         issue_value = description.strip();
         success_message = "";
@@ -45,7 +51,9 @@ def:pub MaintenanceDashboard() -> JsxElement {
         }
         submitting = True;
         try {
+            debug_message = "CALLING CREATE_TICKET";
             result = await create_ticket(location_value, issue_value);
+            debug_message = "BACKEND RESPONSE RECEIVED";
             if result["ok"] as bool {
                 ticket_id = result["ticket_id"] as int;
                 await refresh_data();
@@ -55,8 +63,9 @@ def:pub MaintenanceDashboard() -> JsxElement {
             } else {
                 action_error = result["message"] as str;
             }
-        } except Exception {
-            action_error = "Could not save the report. Please try again.";
+        } except Exception as err {
+            action_error = "Report submission failed: " + str(err);
+            debug_message = action_error;
         }
         submitting = False;
     }
@@ -110,7 +119,7 @@ def:pub MaintenanceDashboard() -> JsxElement {
             </section>
 
             <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
-                <Card className="shadow-sm lg:col-span-2"><CardHeader><CardTitle>{"Report a Problem"}</CardTitle><CardDescription>{"Let the campus team know what needs attention."}</CardDescription></CardHeader><CardContent><form onSubmit={handle_submit_click} className="flex flex-col gap-5"><FieldGroup><Field><FieldLabel htmlFor="location">{"Location"}</FieldLabel><Input id="location" value={location} onChange={handle_location} placeholder="e.g. Science Building, room 204" className="h-10" /></Field><Field><FieldLabel htmlFor="description">{"Issue Description"}</FieldLabel><Textarea id="description" value={description} onChange={handle_description} placeholder="Describe the maintenance issue" className="min-h-28 resize-y" /></Field></FieldGroup><button type="submit" disabled={submitting} className="h-10 w-full rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm disabled:pointer-events-none disabled:opacity-50">{"Submit Report" if not submitting else "Submitting report…"}</button></form></CardContent></Card>
+                <Card className="shadow-sm lg:col-span-2"><CardHeader><CardTitle>{"Report a Problem"}</CardTitle><CardDescription>{"Let the campus team know what needs attention."}</CardDescription></CardHeader><CardContent><form className="flex flex-col gap-5"><FieldGroup><Field><FieldLabel htmlFor="location">{"Location"}</FieldLabel><Input id="location" value={location} onChange={handle_location} placeholder="e.g. Science Building, room 204" className="h-10" /></Field><Field><FieldLabel htmlFor="description">{"Issue Description"}</FieldLabel><Textarea id="description" value={description} onChange={handle_description} placeholder="Describe the maintenance issue" className="min-h-28 resize-y" /></Field></FieldGroup><button type="button" disabled={submitting} onClick={handle_submit_click} className="h-10 w-full rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm disabled:pointer-events-none disabled:opacity-50">{"Submit Report" if not submitting else "Submitting report…"}</button><p className="text-xs text-muted-foreground" role="status">{debug_message}</p><button type="button" onClick={handle_test_click} className="w-fit rounded-lg border border-border bg-background px-3 py-1.5 text-sm">{"TEST CLICK"}</button></form></CardContent></Card>
 
                 <Card className="shadow-sm lg:col-span-3"><CardHeader><CardTitle>{"Recent Maintenance Tickets"}</CardTitle><CardDescription>{"The latest reports from around campus."}</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">
                     {if loading { <p className="py-8 text-center text-sm text-muted-foreground">{"Loading maintenance tickets…"}</p> }}
