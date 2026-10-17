@@ -16,6 +16,10 @@ node TimeSlot {
     has is_available: bool;
 }
 
+node TicketTombstone {
+    has ticket_id: int;
+}
+
 edge ScheduledFor: Ticket --> TimeSlot {}
 
 def:pub initialize_samples() -> dict[str, int] {
@@ -32,11 +36,13 @@ def:pub initialize_samples() -> dict[str, int] {
         if ticket.ticket_id == 101 { ticket_101 = ticket; }
         if ticket.ticket_id == 102 { ticket_102 = ticket; }
     }
-    if ticket_101 is None {
+    deleted_101 = len([shared -->][?:TicketTombstone, ticket_id == 101]) > 0;
+    deleted_102 = len([shared -->][?:TicketTombstone, ticket_id == 102]) > 0;
+    if ticket_101 is None and not deleted_101 {
         ticket_101 = shared ++> Ticket(ticket_id=101, location="Room 5", issue="Ceiling fan is not spinning", category="Electrical", priority="Medium", report_count=1, status="Open", agent_notes="Initial report logged and scheduled.");
         grant(ticket_101, level=ReadPerm);
     }
-    if ticket_102 is None {
+    if ticket_102 is None and not deleted_102 {
         ticket_102 = shared ++> Ticket(ticket_id=102, location="Lab 2", issue="Projector HDMI cable loose", category="Equipment", priority="Low", report_count=1, status="Open", agent_notes="Routine equipment check scheduled.");
         grant(ticket_102, level=ReadPerm);
     }
@@ -164,4 +170,29 @@ def:pub get_ticket_summary() -> dict[str, int] {
         "urgent_hazards": 0,
         "scheduled_repairs": scheduled_repairs
     };
+}
+
+def:pub delete_ticket(ticket_id: int, confirm_id: int) -> dict[str, any] {
+    if ticket_id < 1 or confirm_id != ticket_id {
+        return {"ok": False, "ticket_id": ticket_id, "message": "Deletion confirmation did not match the selected ticket."};
+    }
+    target_id = ticket_id;
+    for ticket in [root.shared -->][?:Ticket] {
+        if ticket.ticket_id == ticket_id {
+            linked_slots = [ticket ->:ScheduledFor:->][?:TimeSlot];
+            for link in [edge ticket ->:ScheduledFor:->] { del link; }
+            for slot in linked_slots {
+                remaining = [slot <-:ScheduledFor:<-][?:Ticket];
+                if len(remaining) == 0 { slot.is_available = True; }
+            }
+            if len([root.shared -->][?:TicketTombstone, ticket_id == target_id]) == 0 {
+                root.shared ++> TicketTombstone(ticket_id=target_id);
+            }
+            del ticket;
+            return {"ok": True, "ticket_id": ticket_id};
+        }
+    }
+    tombstones = [root.shared -->][?:TicketTombstone, ticket_id == target_id];
+    if len(tombstones) > 0 { return {"ok": True, "ticket_id": target_id, "already_deleted": True}; }
+    return {"ok": False, "ticket_id": target_id, "message": "Ticket not found."};
 }
