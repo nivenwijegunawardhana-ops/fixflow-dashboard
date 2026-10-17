@@ -18,158 +18,13 @@ node TimeSlot {
 
 edge ScheduledFor: Ticket --> TimeSlot {}
 
-walker SeedMaintenanceSamples {
-    can initialize with Root entry {
-        shared = here.shared;
-        slots = [shared -->][?:TimeSlot];
-        for (slot_id, label, slot_type, available) in [
-            (1, "Today 1:00 PM", "Emergency", True),
-            (2, "Today 4:00 PM", "Standard", True),
-            (3, "Tomorrow 10:00 AM", "Standard", False),
-            (4, "Tomorrow 2:00 PM", "Standard", False)
-        ] {
-            found = False;
-            for slot in slots {
-                if slot.slot_id == slot_id { found = True; }
-            }
-            if not found {
-                shared ++> TimeSlot(slot_id=slot_id, label=label, slot_type=slot_type, is_available=available);
-            }
-        }
-        tickets = [shared -->][?:Ticket];
-        ticket_101 = None;
-        ticket_102 = None;
-        for ticket in tickets {
-            if ticket.ticket_id == 101 { ticket_101 = ticket; }
-            if ticket.ticket_id == 102 { ticket_102 = ticket; }
-        }
-        if ticket_101 is None {
-            ticket_101 = shared ++> Ticket(
-                ticket_id=101,
-                location="Room 5",
-                issue="Ceiling fan is not spinning",
-                category="Electrical",
-                priority="Medium",
-                report_count=1,
-                status="Open",
-                agent_notes="Initial report logged and scheduled."
-            );
-        }
-        if ticket_102 is None {
-            ticket_102 = shared ++> Ticket(
-                ticket_id=102,
-                location="Lab 2",
-                issue="Projector HDMI cable loose",
-                category="Equipment",
-                priority="Low",
-                report_count=1,
-                status="Open",
-                agent_notes="Routine equipment check scheduled."
-            );
-        }
-        slots = [shared -->][?:TimeSlot];
-        for slot in slots {
-            if slot.slot_id == 3 and ticket_101 is not None {
-                connected = [ticket_101 ->:ScheduledFor:->][?:TimeSlot];
-                if len(connected) == 0 { ticket_101 +>:ScheduledFor:+> slot; }
-                slot.is_available = False;
-            }
-            if slot.slot_id == 4 and ticket_102 is not None {
-                connected = [ticket_102 ->:ScheduledFor:->][?:TimeSlot];
-                if len(connected) == 0 { ticket_102 +>:ScheduledFor:+> slot; }
-                slot.is_available = False;
-            }
-        }
-    }
-}
-
-walker ListMaintenanceTickets {
-    has tickets: list[dict] = [];
-    has reports: list[list[dict]] = [];
-
-    can start with Root entry {
-        visit [here.shared -->];
-    }
-
-    can collect_ticket with Ticket entry {
-        slots = [here ->:ScheduledFor:->][?:TimeSlot];
-        scheduled_time = "Unscheduled";
-        if len(slots) > 0 { scheduled_time = slots[0].label; }
-        self.tickets.append({
-            "ticket_id": here.ticket_id,
-            "location": here.location,
-            "issue": here.issue,
-            "category": here.category,
-            "priority": here.priority,
-            "report_count": here.report_count,
-            "status": here.status,
-            "scheduled_time": scheduled_time
-        });
-    }
-
-    can finish with Root exit {
-        report self.tickets;
-    }
-}
-
-walker ListMaintenanceSlots {
-    has slots: list[dict] = [];
-    has reports: list[list[dict]] = [];
-
-    can start with Root entry {
-        visit [here.shared -->];
-    }
-
-    can collect_slot with TimeSlot entry {
-        assignments = [here <-:ScheduledFor:<-][?:Ticket];
-        occupied_by = "";
-        if len(assignments) > 0 { occupied_by = "Ticket #" + str(assignments[0].ticket_id); }
-        available = here.is_available and len(assignments) == 0;
-        self.slots.append({
-            "slot_id": here.slot_id,
-            "label": here.label,
-            "slot_type": here.slot_type,
-            "is_available": available,
-            "occupied_by": occupied_by
-        });
-    }
-
-    can finish with Root exit {
-        report self.slots;
-    }
-}
-
-walker GetMaintenanceSummary {
-    has total_tickets: int = 0;
-    has scheduled_repairs: int = 0;
-    has reports: list[dict] = [];
-
-    can start with Root entry {
-        visit [here.shared -->];
-    }
-
-    can count_ticket with Ticket entry {
-        self.total_tickets += 1;
-        if len([here ->:ScheduledFor:->][?:TimeSlot]) > 0 { self.scheduled_repairs += 1; }
-    }
-
-    can finish with Root exit {
-        report {
-            "total_tickets": self.total_tickets,
-            "merged_duplicates": 0,
-            "urgent_hazards": 0,
-            "scheduled_repairs": self.scheduled_repairs
-        };
-    }
-}
-
-def:pub initialize_samples() {
+def:pub initialize_samples() -> dict[str, int] {
     shared = root.shared;
     slots = [shared -->][?:TimeSlot];
-    if len([s for s in slots if s.slot_id == 1]) == 0 { shared ++> TimeSlot(slot_id=1, label="Today 1:00 PM", slot_type="Emergency", is_available=True); }
-    if len([s for s in slots if s.slot_id == 2]) == 0 { shared ++> TimeSlot(slot_id=2, label="Today 4:00 PM", slot_type="Standard", is_available=True); }
-    if len([s for s in slots if s.slot_id == 3]) == 0 { shared ++> TimeSlot(slot_id=3, label="Tomorrow 10:00 AM", slot_type="Standard", is_available=False); }
-    if len([s for s in slots if s.slot_id == 4]) == 0 { shared ++> TimeSlot(slot_id=4, label="Tomorrow 2:00 PM", slot_type="Standard", is_available=False); }
+    if len([s for s in slots if s.slot_id == 1]) == 0 { slot = shared ++> TimeSlot(slot_id=1, label="Today 1:00 PM", slot_type="Emergency", is_available=True); grant(slot, level=ReadPerm); }
+    if len([s for s in slots if s.slot_id == 2]) == 0 { slot = shared ++> TimeSlot(slot_id=2, label="Today 4:00 PM", slot_type="Standard", is_available=True); grant(slot, level=ReadPerm); }
+    if len([s for s in slots if s.slot_id == 3]) == 0 { slot = shared ++> TimeSlot(slot_id=3, label="Tomorrow 10:00 AM", slot_type="Standard", is_available=False); grant(slot, level=ReadPerm); }
+    if len([s for s in slots if s.slot_id == 4]) == 0 { slot = shared ++> TimeSlot(slot_id=4, label="Tomorrow 2:00 PM", slot_type="Standard", is_available=False); grant(slot, level=ReadPerm); }
     tickets = [shared -->][?:Ticket];
     ticket_101: Ticket | None = None;
     ticket_102: Ticket | None = None;
@@ -179,9 +34,11 @@ def:pub initialize_samples() {
     }
     if ticket_101 is None {
         ticket_101 = shared ++> Ticket(ticket_id=101, location="Room 5", issue="Ceiling fan is not spinning", category="Electrical", priority="Medium", report_count=1, status="Open", agent_notes="Initial report logged and scheduled.");
+        grant(ticket_101, level=ReadPerm);
     }
     if ticket_102 is None {
         ticket_102 = shared ++> Ticket(ticket_id=102, location="Lab 2", issue="Projector HDMI cable loose", category="Equipment", priority="Low", report_count=1, status="Open", agent_notes="Routine equipment check scheduled.");
+        grant(ticket_102, level=ReadPerm);
     }
     slots = [shared -->][?:TimeSlot];
     for slot in slots {
@@ -194,22 +51,56 @@ def:pub initialize_samples() {
             if len(assigned) == 0 { ticket_102 +>:ScheduledFor:+> slot; }
         }
     }
+    return {"tickets": len([shared -->][?:Ticket]), "slots": len([shared -->][?:TimeSlot])};
 }
 
-def:pub list_tickets() -> list[dict] {
-    result = root spawn ListMaintenanceTickets();
-    if len(result.reports) > 0 { return result.reports[0] as list[dict]; }
-    return [];
+def:pub list_tickets() -> list[dict[str, any]] {
+    tickets: list[dict[str, any]] = [];
+    for ticket in [root.shared -->][?:Ticket] {
+        assigned = [ticket ->:ScheduledFor:->][?:TimeSlot];
+        scheduled_time = "Unscheduled";
+        if len(assigned) > 0 { scheduled_time = assigned[0].label; }
+        tickets.append({
+            "ticket_id": ticket.ticket_id,
+            "location": ticket.location,
+            "issue": ticket.issue,
+            "category": ticket.category,
+            "priority": ticket.priority,
+            "report_count": ticket.report_count,
+            "status": ticket.status,
+            "scheduled_time": scheduled_time
+        });
+    }
+    return tickets;
 }
 
-def:pub list_slots() -> list[dict] {
-    result = root spawn ListMaintenanceSlots();
-    if len(result.reports) > 0 { return result.reports[0] as list[dict]; }
-    return [];
+def:pub list_slots() -> list[dict[str, any]] {
+    slots: list[dict[str, any]] = [];
+    for slot in [root.shared -->][?:TimeSlot] {
+        assigned = [slot <-:ScheduledFor:<-][?:Ticket];
+        occupied_by = "";
+        if len(assigned) > 0 { occupied_by = "Ticket #" + str(assigned[0].ticket_id); }
+        slots.append({
+            "slot_id": slot.slot_id,
+            "label": slot.label,
+            "slot_type": slot.slot_type,
+            "is_available": slot.is_available and len(assigned) == 0,
+            "occupied_by": occupied_by
+        });
+    }
+    return slots;
 }
 
-def:pub get_ticket_summary() -> dict {
-    result = root spawn GetMaintenanceSummary();
-    if len(result.reports) > 0 { return result.reports[0] as dict; }
-    return {"total_tickets": 0, "merged_duplicates": 0, "urgent_hazards": 0, "scheduled_repairs": 0};
+def:pub get_ticket_summary() -> dict[str, int] {
+    tickets = [root.shared -->][?:Ticket];
+    scheduled_repairs = 0;
+    for ticket in tickets {
+        if len([ticket ->:ScheduledFor:->][?:TimeSlot]) > 0 { scheduled_repairs += 1; }
+    }
+    return {
+        "total_tickets": len(tickets),
+        "merged_duplicates": 0,
+        "urgent_hazards": 0,
+        "scheduled_repairs": scheduled_repairs
+    };
 }
