@@ -91,6 +91,67 @@ def:pub list_slots() -> list[dict[str, any]] {
     return slots;
 }
 
+walker TransitionTicketStatus {
+    has ticket_id: int;
+    has reports: list[dict[str, any]] = [];
+
+    can update with Ticket entry {
+        if here.ticket_id == self.ticket_id {
+            if here.status == "Open" {
+                here.status = "In Progress";
+                self.reports.append({"ticket_id": here.ticket_id, "status": here.status, "updated": True});
+            } elif here.status == "In Progress" {
+                here.status = "Resolved";
+                self.reports.append({"ticket_id": here.ticket_id, "status": here.status, "updated": True});
+            } else {
+                self.reports.append({"ticket_id": here.ticket_id, "status": here.status, "updated": False});
+            }
+            disengage;
+        }
+    }
+}
+
+def:pub create_ticket(location: str, issue: str) -> dict[str, any] {
+    clean_location = location.strip();
+    clean_issue = issue.strip();
+    if len(clean_location) < 2 or len(clean_issue) < 5 {
+        return {"ok": False, "message": "Enter a meaningful location and issue description."};
+    }
+    tickets = [root.shared -->][?:Ticket];
+    next_id = 100;
+    for ticket in tickets {
+        if ticket.ticket_id > next_id { next_id = ticket.ticket_id; }
+    }
+    ticket = root.shared ++> Ticket(
+        ticket_id=next_id + 1,
+        location=clean_location,
+        issue=clean_issue,
+        category="Other",
+        priority="Pending Review",
+        report_count=1,
+        status="Open",
+        agent_notes="Awaiting AI assessment"
+    );
+    grant(ticket, level=ReadPerm);
+    return {"ok": True, "ticket_id": ticket.ticket_id, "message": "Report submitted successfully."};
+}
+
+def:pub transition_ticket_status(ticket_id: int) -> dict[str, any] {
+    for ticket in [root.shared -->][?:Ticket] {
+        if ticket.ticket_id == ticket_id {
+            if ticket.status == "Open" {
+                ticket.status = "In Progress";
+                return {"ticket_id": ticket_id, "status": ticket.status, "updated": True};
+            } elif ticket.status == "In Progress" {
+                ticket.status = "Resolved";
+                return {"ticket_id": ticket_id, "status": ticket.status, "updated": True};
+            }
+            return {"ticket_id": ticket_id, "status": ticket.status, "updated": False};
+        }
+    }
+    return {"ticket_id": ticket_id, "updated": False, "message": "Ticket not found."};
+}
+
 def:pub get_ticket_summary() -> dict[str, int] {
     tickets = [root.shared -->][?:Ticket];
     scheduled_repairs = 0;
