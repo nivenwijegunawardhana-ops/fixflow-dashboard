@@ -29,6 +29,11 @@ def:pub MaintenanceDashboard() -> JsxElement {
         summary = await get_ticket_summary();
     }
 
+    async def handle_submit_click(e: FormEvent) {
+        e.preventDefault();
+        await handle_submit();
+    }
+
     async def handle_submit() {
         location_value = location.strip();
         issue_value = description.strip();
@@ -105,7 +110,7 @@ def:pub MaintenanceDashboard() -> JsxElement {
             </section>
 
             <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
-                <Card className="shadow-sm lg:col-span-2"><CardHeader><CardTitle>{"Report a Problem"}</CardTitle><CardDescription>{"Let the campus team know what needs attention."}</CardDescription></CardHeader><CardContent><form className="flex flex-col gap-5"><FieldGroup><Field><FieldLabel htmlFor="location">{"Location"}</FieldLabel><Input id="location" value={location} onChange={handle_location} placeholder="e.g. Science Building, room 204" className="h-10" /></Field><Field><FieldLabel htmlFor="description">{"Issue Description"}</FieldLabel><Textarea id="description" value={description} onChange={handle_description} placeholder="Describe the maintenance issue" className="min-h-28 resize-y" /></Field></FieldGroup><Button type="button" disabled={submitting} onClick={lambda (e: MouseEvent) { handle_submit(); }} className="h-10 w-full shadow-sm">{"Submit Report" if not submitting else "Submitting report…"}</Button></form></CardContent></Card>
+                <Card className="shadow-sm lg:col-span-2"><CardHeader><CardTitle>{"Report a Problem"}</CardTitle><CardDescription>{"Let the campus team know what needs attention."}</CardDescription></CardHeader><CardContent><form onSubmit={handle_submit_click} className="flex flex-col gap-5"><FieldGroup><Field><FieldLabel htmlFor="location">{"Location"}</FieldLabel><Input id="location" value={location} onChange={handle_location} placeholder="e.g. Science Building, room 204" className="h-10" /></Field><Field><FieldLabel htmlFor="description">{"Issue Description"}</FieldLabel><Textarea id="description" value={description} onChange={handle_description} placeholder="Describe the maintenance issue" className="min-h-28 resize-y" /></Field></FieldGroup><button type="submit" disabled={submitting} className="h-10 w-full rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm disabled:pointer-events-none disabled:opacity-50">{"Submit Report" if not submitting else "Submitting report…"}</button></form></CardContent></Card>
 
                 <Card className="shadow-sm lg:col-span-3"><CardHeader><CardTitle>{"Recent Maintenance Tickets"}</CardTitle><CardDescription>{"The latest reports from around campus."}</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">
                     {if loading { <p className="py-8 text-center text-sm text-muted-foreground">{"Loading maintenance tickets…"}</p> }}
